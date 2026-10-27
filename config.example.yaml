@@ -1,0 +1,7 @@
+plugins:
+  enabled: true
+  configs:
+    omp-gateway-usage:
+      enabled: true
+      gateway_url: http://omp-gateway:4000
+      token_file: /run/secrets/omp-gateway-usage.token

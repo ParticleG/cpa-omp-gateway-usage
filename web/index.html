@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>OMP Gateway Usage · CPA</title>
+  <link rel="stylesheet" href="./style.css">
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <main>
+    <header>
+      <div><p class="eyebrow">CPA · READ-ONLY</p><h1>OMP Gateway Usage</h1></div>
+      <a href="/management.html">Management Center</a>
+    </header>
+    <p class="intro">Claude subscription limits, reported by your private OMP Gateway.</p>
+    <section class="toolbar" aria-label="Quota controls">
+      <div><span class="badge">Claude subscription</span><p id="updated">No quota data loaded.</p></div>
+      <button id="refresh" type="button">Refresh</button>
+    </section>
+    <p id="notice" role="status" aria-live="polite">Connecting to your CPA management session…</p>
+    <div id="reports" aria-busy="false"></div>
+    <footer>
+      <p>Account-wide usage includes Claude web, Claude Code, and other clients using the same subscription. It is not a per-API-key allowance or a token-cost estimate.</p>
+      <p>Refresh reads the Gateway cache; upstream data normally refreshes about every five minutes. Missing data is never treated as zero usage.</p>
+      <p>No OAuth credentials or Gateway tokens are sent to this page. Only an authenticated CPA management session can read quota data.</p>
+    </footer>
+  </main>
+</body>
+</html>

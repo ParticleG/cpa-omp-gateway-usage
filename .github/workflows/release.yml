@@ -1,0 +1,41 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Build and package Linux amd64
+        run: bash scripts/package.sh "${GITHUB_REF_NAME#v}"
+
+      - name: Verify JavaScript and native CPA integration
+        run: |
+          node --check web/app.js
+          python3 scripts/smoke.py dist/omp-gateway-usage.so "${GITHUB_REF_NAME#v}"
+
+      - name: Publish release without replacing existing assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            "dist/omp-gateway-usage_${GITHUB_REF_NAME#v}_linux_amd64.zip" \
+            dist/checksums.txt \
+            --repo "$GITHUB_REPOSITORY" \
+            --verify-tag \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes
