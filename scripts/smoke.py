@@ -378,7 +378,7 @@ def main():
                     if sys.exc_info()[0] is not None:
                         log_handle.flush()
                         logs = log_path.read_text(encoding="utf-8", errors="replace")
-                        print(redact(logs, redactions)[-6000:], file=sys.stderr)
+                        print(redact(logs, redactions), file=sys.stderr)
         finally:
             gateway.shutdown()
             gateway.server_close()
