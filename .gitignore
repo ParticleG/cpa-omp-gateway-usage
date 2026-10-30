@@ -1,3 +1,4 @@
 /dist/
 *.so
 *.h
+__pycache__/

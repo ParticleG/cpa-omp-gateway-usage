@@ -4,38 +4,113 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: New numeric version to build, verify, and publish (for example 0.1.2)
+        required: true
+        type: string
 
 permissions:
   contents: read
 
+env:
+  RELEASE_REF: ${{ inputs.version || github.ref_name }}
+
 jobs:
-  release:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 20
-    permissions:
-      contents: write
+  build:
+    name: Build and verify ${{ matrix.target }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: linux_amd64
+            runner: ubuntu-24.04
+          - target: linux_arm64
+            runner: ubuntu-24.04-arm
+          - target: darwin_amd64
+            runner: macos-15-intel
+          - target: darwin_arm64
+            runner: macos-15
+          - target: windows_amd64
+            runner: windows-2022
+    defaults:
+      run:
+        shell: bash
     steps:
       - name: Check out source
         uses: actions/checkout@v5
         with:
           persist-credentials: false
 
-      - name: Build and package Linux amd64
-        run: bash scripts/package.sh "${GITHUB_REF_NAME#v}"
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.26.x'
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Build and package native library
+        run: |
+          version="${RELEASE_REF#v}"
+          python scripts/package.py "$version"
+          printf 'VERSION=%s\n' "$version" >> "$GITHUB_ENV"
 
       - name: Verify JavaScript and native CPA integration
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET: ${{ matrix.target }}
         run: |
           node --check web/app.js
-          python3 scripts/smoke.py dist/omp-gateway-usage.so "${GITHUB_REF_NAME#v}"
+          python scripts/smoke.py "dist/omp-gateway-usage_${VERSION}_${TARGET}.zip" "$VERSION"
+
+      - name: Upload verified platform archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.target }}
+          path: dist/omp-gateway-usage_${{ env.VERSION }}_${{ matrix.target }}.zip
+          if-no-files-found: error
+
+  release:
+    name: Publish complete release
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Download all verified platform archives
+        uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          merge-multiple: true
+          path: dist
+
+      - name: Write combined checksums
+        working-directory: dist
+        run: |
+          printf 'VERSION=%s\n' "${RELEASE_REF#v}" >> "$GITHUB_ENV"
+          sha256sum -- *.zip > checksums.txt
+
+      - name: Create a new tag at the verified source commit
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+            -f "ref=refs/tags/v${VERSION}" -f "sha=${GITHUB_SHA}"
 
       - name: Publish release without replacing existing assets
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" \
-            "dist/omp-gateway-usage_${GITHUB_REF_NAME#v}_linux_amd64.zip" \
-            dist/checksums.txt \
+          gh release create "v${VERSION}" dist/*.zip dist/checksums.txt \
             --repo "$GITHUB_REPOSITORY" \
             --verify-tag \
-            --title "$GITHUB_REF_NAME" \
+            --title "v${VERSION}" \
             --generate-notes

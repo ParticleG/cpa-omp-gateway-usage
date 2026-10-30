@@ -131,8 +131,9 @@ func TestResourcePathsCannotReachQuotaFetch(t *testing.T) {
 
 func TestGatewayConfigurationRejectsEmbeddedCredentials(t *testing.T) {
 	t.Parallel()
+	tokenPath := filepath.Join(t.TempDir(), "token")
 	for _, endpoint := range []string{"https://user:password@example.test", "https://example.test?token=secret", "https://example.test/v1/usage", "file:///tmp/token", "http://"} {
-		if err := (config{GatewayURL: endpoint, TokenFile: "/run/secrets/token"}).validate(); err == nil {
+		if err := (config{GatewayURL: endpoint, TokenFile: tokenPath}).validate(); err == nil {
 			t.Errorf("accepted unsafe or ambiguous origin %q", endpoint)
 		}
 	}
