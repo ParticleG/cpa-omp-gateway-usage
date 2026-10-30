@@ -24,7 +24,7 @@ Quota is account-wide and includes usage outside CPA. It is not a per-key allowa
 | Linux ABI | Debian 12 / glibc; not musl or Alpine |
 | Browser login | Same-origin CPAMC session with **Remember password** enabled |
 
-Starting with `v0.1.2`, releases cover all five platforms required by the CPA plugin store. This is an independent community plugin, not an official Anthropic or OMP integration.
+The latest published release, `v0.1.1`, supports Linux x64 only. Five-platform validation for `v0.1.2` is in progress, but publication is blocked: the Go shared library crashes the CPA host on Intel macOS with `fatal error: unknown caller pc`. Do not load a `darwin/amd64` development build. The other four platforms passed native integration checks; no `v0.1.2` release has been published. See [the store submission requirements](https://github.com/ParticleG/cpa-omp-gateway-usage/issues/1). This is an independent community plugin, not an official Anthropic or OMP integration.
 
 ## Install
 
@@ -34,7 +34,7 @@ Download the ZIP for your OS and architecture and `checksums.txt` from [GitHub R
 
 Compare the downloaded ZIP's SHA-256 with its entry in `checksums.txt`. GNU users can run `sha256sum --ignore-missing -c checksums.txt`; macOS users can compute the hash with `shasum -a 256`, and Windows users with PowerShell `Get-FileHash -Algorithm SHA256`.
 
-Extract the native library and place it under `<plugins.dir>` using the matching path:
+For available releases, extract the native library under `<plugins.dir>`. The intended layout for the five release targets is:
 
 | Platform | Library path relative to `<plugins.dir>` |
 | --- | --- |
