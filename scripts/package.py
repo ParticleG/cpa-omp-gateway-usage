@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
-"""Build and package the CPA plugin for the host Go platform."""
+"""Build and package the CPA plugin for the native host platform."""
 
 import os
+import platform
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
+import tomllib
 import zipfile
 from pathlib import Path
 
@@ -28,20 +31,19 @@ def error(message):
 
 
 def host_platform():
-    result = subprocess.run(
-        ["go", "env", "GOHOSTOS", "GOHOSTARCH"],
-        check=True,
-        stdout=subprocess.PIPE,
-        text=True,
-    )
-    values = result.stdout.split()
-    if len(values) != 2:
-        raise SystemExit(f"Unexpected go env output: {result.stdout!r}")
-    return values[0], values[1]
+    system = platform.system().lower()
+    machine = platform.machine().strip().lower()
+    if machine in ("x86_64", "amd64", "x64"):
+        return system, "amd64"
+    if machine in ("aarch64", "arm64"):
+        return system, "arm64"
+    raise SystemExit(f"Unsupported native architecture: {machine}")
 
 
 def build_linux(version, goarch, library):
     image = f"local/cpa-omp-gateway-usage:{version}-{goarch}"
+    with (ROOT / "rust-toolchain.toml").open("rb") as handle:
+        compiler = tomllib.load(handle)["toolchain"]["channel"]
     command = [
         "docker",
         "build",
@@ -51,10 +53,9 @@ def build_linux(version, goarch, library):
         image,
         "--build-arg",
         f"VERSION={version}",
+        "--build-arg",
+        f"RUST_IMAGE=rust:{compiler}-bookworm",
     ]
-    goproxy = os.environ.get("GOPROXY")
-    if goproxy:
-        command.extend(["--build-arg", f"GOPROXY={goproxy}"])
     command.append(str(ROOT))
     subprocess.run(command, check=True)
 
@@ -78,27 +79,42 @@ def build_linux(version, goarch, library):
 
 
 def build_native(version, goos, goarch, library):
+    arch = "x86_64" if goarch == "amd64" else "aarch64"
+    abi = {
+        "linux": "unknown-linux-gnu",
+        "darwin": "apple-darwin",
+        "windows": "pc-windows-msvc",
+    }[goos]
+    target = f"{arch}-{abi}"
+    target_dir = ROOT / "target"
     env = os.environ.copy()
-    env["CGO_ENABLED"] = "1"
-    env["GOOS"] = goos
-    env["GOARCH"] = goarch
-    subprocess.run(["go", "test", "-race", "./..."], cwd=ROOT, env=env, check=True)
+    env["PLUGIN_VERSION"] = version
+    if "CARGO_ENCODED_RUSTFLAGS" in env:
+        flags = [value for value in env["CARGO_ENCODED_RUSTFLAGS"].split("\x1f") if value]
+    else:
+        flags = env.get("RUSTFLAGS", "").split()
+    flags.extend([
+        f"--remap-path-prefix={Path.home()}=/build-home",
+        f"--remap-path-prefix={ROOT}=.",
+    ])
+    if goos == "windows":
+        flags.extend(["-C", "target-feature=+crt-static"])
+    env["CARGO_ENCODED_RUSTFLAGS"] = "\x1f".join(flags)
+    env.pop("RUSTFLAGS", None)
+    options = ["--locked", "--target", target, "--target-dir", str(target_dir)]
+    subprocess.run(["cargo", "test", *options], cwd=ROOT, env=env, check=True)
     subprocess.run(
-        [
-            "go",
-            "build",
-            "-trimpath",
-            "-buildmode=c-shared",
-            "-ldflags",
-            f"-X main.pluginVersion={version}",
-            "-o",
-            str(library),
-            ".",
-        ],
+        ["cargo", "build", "--release", *options],
         cwd=ROOT,
         env=env,
         check=True,
     )
+    prefix = "" if goos == "windows" else "lib"
+    built = (
+        target_dir / target / "release"
+        / f"{prefix}omp_gateway_usage.{EXTENSIONS[(goos, goarch)]}"
+    )
+    shutil.copy2(built, library)
 
 
 def write_archive(version, goos, goarch, library):

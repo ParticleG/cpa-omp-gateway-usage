@@ -1,4 +1,3 @@
 /dist/
-*.so
-*.h
+/target/
 __pycache__/

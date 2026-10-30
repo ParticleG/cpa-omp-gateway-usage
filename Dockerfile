@@ -1,13 +1,13 @@
-FROM golang:1.26-bookworm AS build
+ARG RUST_IMAGE=rust:bookworm
+FROM ${RUST_IMAGE} AS build
 WORKDIR /src
-COPY go.mod go.sum ./
-ARG GOPROXY=https://proxy.golang.org,direct
-RUN go mod download
-COPY *.go ./
+COPY Cargo.toml Cargo.lock rust-toolchain.toml ./
+COPY src ./src
 COPY web ./web
 ARG VERSION=dev
-RUN go test -race ./... && CGO_ENABLED=1 go build -trimpath -buildmode=c-shared \
-    -ldflags "-X main.pluginVersion=${VERSION}" -o /out/omp-gateway-usage.so .
+ENV PLUGIN_VERSION=${VERSION}
+ENV RUSTFLAGS="--remap-path-prefix=/src=."
+RUN cargo test --locked && cargo build --release --locked
 
 FROM scratch
-COPY --from=build /out/omp-gateway-usage.so /omp-gateway-usage.so
+COPY --from=build /src/target/release/libomp_gateway_usage.so /omp-gateway-usage.so

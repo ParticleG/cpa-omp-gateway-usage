@@ -24,7 +24,9 @@ Quota is account-wide and includes usage outside CPA. It is not a per-key allowa
 | Linux ABI | Debian 12 / glibc; not musl or Alpine |
 | Browser login | Same-origin CPAMC session with **Remember password** enabled |
 
-The latest published release, `v0.1.1`, supports Linux x64 only. Five-platform validation for `v0.1.2` is in progress, but publication is blocked: the Go shared library crashes the CPA host on Intel macOS with `fatal error: unknown caller pc`. Do not load a `darwin/amd64` development build. The other four platforms passed native integration checks; no `v0.1.2` release has been published. See [the store submission requirements](https://github.com/ParticleG/cpa-omp-gateway-usage/issues/1). This is an independent community plugin, not an official Anthropic or OMP integration.
+The `v0.1.2` release pipeline targets all five platforms required by the CPA plugin store and publishes only after every native integration check passes. `v0.1.1` was Linux x64 only.
+
+The backend is a Rust `cdylib` using CPA's language-neutral native ABI. It replaces the Go shared library, which collided with the Go host runtime on Intel macOS. Configuration, token mounts, HTTP routes and the dashboard remain unchanged; there is no second backend or helper process. This is an independent community plugin, not an official Anthropic or OMP integration.
 
 ## Install
 
@@ -108,14 +110,14 @@ Do not expose Gateway port 4000 publicly to make this dashboard work. If a token
 
 ## Build and validate
 
-Local Go development requires Go 1.24+ and a C compiler:
+Install Rust through `rustup`; `rust-toolchain.toml` pins the compiler. Local development also requires the platform's native linker:
 
 ```sh
-go test -race ./...
+cargo test --locked
 node --check web/app.js
 ```
 
-Release packaging requires Python 3.12+ and Go on `PATH`. Linux also requires Docker; macOS requires Xcode Command Line Tools, and Windows requires a MinGW-w64 GCC toolchain. The release workflow uses Go 1.26.
+Release packaging requires Python 3.12+. Linux uses Docker with the pinned Rust compiler on Debian 12. macOS requires Rust and Xcode Command Line Tools; Windows requires Rust's MSVC target and Visual Studio C++ Build Tools. The Windows library uses the static CRT rather than depending on a compiler installation's runtime DLLs.
 
 ```sh
 python scripts/package.py 0.1.2
@@ -124,7 +126,9 @@ python scripts/smoke.py dist/omp-gateway-usage_0.1.2_linux_amd64.zip 0.1.2
 
 Use your Python 3 executable (`python3` if appropriate). The smoke command above is a Linux x64 example; pass the archive produced for your native platform.
 
-The packager detects the host Go OS/architecture, runs Go race tests, stamps the supplied numeric version into plugin metadata, and writes the platform ZIP under `dist/`. Linux builds stay inside Debian 12 Docker to preserve the glibc baseline on both architectures. macOS and Windows build with their native C toolchains. If your build environment requires a different Go module proxy, set `GOPROXY` when invoking the packager.
+The packager detects the native OS/architecture, runs the Rust tests, embeds the supplied numeric release version, and writes the platform ZIP under `dist/`. Linux builds stay inside Debian 12 Docker to preserve the glibc baseline on both architectures. macOS and Windows use their native Rust targets. All builds use `Cargo.lock`; no Go toolchain is needed to build the plugin.
+
+Refresh `THIRD_PARTY_NOTICES.md` when changing `Cargo.lock` or the pinned Rust compiler. It contains the Rust standard-library distribution notices and dependency license texts for all five targets.
 
 The smoke check requires GitHub CLI (`gh`). It downloads and checksum-verifies the matching official CPA `8.0.43` release, extracts the plugin from the actual ZIP, and runs CPA natively with temporary configuration, synthetic quota data and temporary credentials. It checks registration, the embedded version, quota projection, management authentication and inference-key separation. It does not use a real Claude account or production configuration.
 
@@ -140,4 +144,4 @@ To remove this integration, remove only its plugin configuration, library and to
 
 ## License and acknowledgements
 
-Project code is released under the [MIT License](LICENSE). [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) preserves notices for CPA's native ABI examples, the Key Model Access management-session integration, the Go runtime and `gopkg.in/yaml.v3`. Those components retain their respective licenses.
+Project code is released under the [MIT License](LICENSE). [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) preserves notices for CPA's native ABI examples, the Key Model Access management-session integration, the Rust standard library and linked dependencies. Those components retain their respective licenses.

@@ -45,10 +45,9 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Set up Go
-        uses: actions/setup-go@v6
-        with:
-          go-version: '1.26.x'
+      - name: Install the pinned native Rust toolchain
+        if: runner.os != 'Linux'
+        run: rustup show active-toolchain
 
       - name: Set up Python
         uses: actions/setup-python@v6
