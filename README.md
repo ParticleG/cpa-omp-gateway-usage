@@ -24,7 +24,7 @@ Quota is account-wide and includes usage outside CPA. It is not a per-key allowa
 | Linux ABI | Debian 12 / glibc; not musl or Alpine |
 | Browser login | Same-origin CPAMC session with **Remember password** enabled |
 
-The `v0.1.2` release pipeline targets all five platforms required by the CPA plugin store and publishes only after every native integration check passes. `v0.1.1` was Linux x64 only.
+[Release `v0.1.2`](https://github.com/ParticleG/cpa-omp-gateway-usage/releases/tag/v0.1.2) provides all five native targets listed below. Every target passed the [native release validation](https://github.com/ParticleG/cpa-omp-gateway-usage/actions/runs/41023179858) using CPA `8.0.43`.
 
 The backend is a Rust `cdylib` using CPA's language-neutral native ABI. It replaces the Go shared library, which collided with the Go host runtime on Intel macOS. Configuration, token mounts, HTTP routes and the dashboard remain unchanged; there is no second backend or helper process. This is an independent community plugin, not an official Anthropic or OMP integration.
 
@@ -36,7 +36,7 @@ Download the ZIP for your OS and architecture and `checksums.txt` from [GitHub R
 
 Compare the downloaded ZIP's SHA-256 with its entry in `checksums.txt`. GNU users can run `sha256sum --ignore-missing -c checksums.txt`; macOS users can compute the hash with `shasum -a 256`, and Windows users with PowerShell `Get-FileHash -Algorithm SHA256`.
 
-For available releases, extract the native library under `<plugins.dir>`. The intended layout for the five release targets is:
+Extract the native library to the matching platform path under `<plugins.dir>`:
 
 | Platform | Library path relative to `<plugins.dir>` |
 | --- | --- |
