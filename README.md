@@ -24,7 +24,7 @@ Quota is account-wide and includes usage outside CPA. It is not a per-key allowa
 | Linux ABI | Debian 12 / glibc; not musl or Alpine |
 | Browser login | Same-origin CPAMC session saved with **Remember password** (secureStorage v2 or legacy v1) |
 
-[Release `v0.1.2`](https://github.com/ParticleG/cpa-omp-gateway-usage/releases/tag/v0.1.2) provides all five native targets listed below. Every target passed the [native release validation](https://github.com/ParticleG/cpa-omp-gateway-usage/actions/runs/41023179858) using CPA `8.0.43`.
+[Release `v0.1.3`](https://github.com/ParticleG/cpa-omp-gateway-usage/releases/tag/v0.1.3) provides all five native targets listed below. Every target passed the [native release validation](https://github.com/ParticleG/cpa-omp-gateway-usage/actions/runs/41186440827) using CPA `8.0.43`.
 
 The backend is a Rust `cdylib` using CPA's language-neutral native ABI. It replaces the Go shared library, which collided with the Go host runtime on Intel macOS. Configuration, token mounts, HTTP routes and the dashboard remain unchanged; there is no second backend or helper process. This is an independent community plugin, not an official Anthropic or OMP integration.
 
