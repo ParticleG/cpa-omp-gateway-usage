@@ -22,7 +22,7 @@ Quota is account-wide and includes usage outside CPA. It is not a per-key allowa
 | CLIProxyAPI | Tested with `8.0.43`; requires RPC schema 6+ and a CGO-enabled build |
 | OMP Gateway | Tested with `18.12.6` and its `GET /v1/usage` report format |
 | Linux ABI | Debian 12 / glibc; not musl or Alpine |
-| Browser login | Same-origin CPAMC session with **Remember password** enabled |
+| Browser login | Same-origin CPAMC session saved with **Remember password** (secureStorage v2 or legacy v1) |
 
 [Release `v0.1.2`](https://github.com/ParticleG/cpa-omp-gateway-usage/releases/tag/v0.1.2) provides all five native targets listed below. Every target passed the [native release validation](https://github.com/ParticleG/cpa-omp-gateway-usage/actions/runs/41023179858) using CPA `8.0.43`.
 
@@ -103,7 +103,7 @@ Authorization: Bearer <CPA management key>
 - OMP denies `/v1/usage` to scoped client tokens. The plugin therefore reads the Gateway **main token** from the private file on each authenticated query. This token has broader privileges than a read-only quota token; it is never sent to the browser or returned by the plugin.
 - The plugin does not follow upstream HTTP redirects or use environment-selected HTTP proxies, preventing the main token from being sent to those destinations.
 - CPA native plugins are trusted in-process code. The token mount does not isolate this plugin from other native plugins or CPA administrators.
-- The UI reuses the existing same-origin CPAMC `cli-proxy-auth` session, using its secureStorage v1 format and legacy key fallback. That format is reversible obfuscation, not encryption. The plugin does not persist another copy of the management key. Logout storage events clear displayed quota.
+- The UI reuses the existing same-origin CPAMC `cli-proxy-auth` session. It reads the current secureStorage v2 format, legacy v1 and the legacy key fallback; these formats are reversible obfuscation, not encryption. CPAMC persists the management key only when **Remember password** is enabled; otherwise the key stays in Management Center memory and this page cannot use it. The plugin does not persist another copy of the management key. Logout storage events clear displayed quota.
 - Transport failures and unexpected responses produce sanitized errors, not zero-usage fallbacks.
 
 Do not expose Gateway port 4000 publicly to make this dashboard work. If a token file is replaced with a new inode, recreate the CPA container so its file bind mount follows the replacement.
@@ -120,8 +120,8 @@ node --check web/app.js
 Release packaging requires Python 3.12+. Linux uses Docker with the pinned Rust compiler on Debian 12. macOS requires Rust and Xcode Command Line Tools; Windows requires Rust's MSVC target and Visual Studio C++ Build Tools. The Windows library uses the static CRT rather than depending on a compiler installation's runtime DLLs.
 
 ```sh
-python scripts/package.py 0.1.2
-python scripts/smoke.py dist/omp-gateway-usage_0.1.2_linux_amd64.zip 0.1.2
+python scripts/package.py 0.1.3
+python scripts/smoke.py dist/omp-gateway-usage_0.1.3_linux_amd64.zip 0.1.3
 ```
 
 Use your Python 3 executable (`python3` if appropriate). The smoke command above is a Linux x64 example; pass the archive produced for your native platform.

@@ -12,15 +12,18 @@
   const timezone = date.resolvedOptions().timeZone;
   let pending = null;
 
-  // CPAMC secureStorage v1 uses reversible obfuscation, not encryption.
-  // Match the existing Key Model Access session integration without storing another copy.
+  // CPAMC secureStorage is reversible obfuscation, not encryption: v2 XORs with a host-scoped key,
+  // while legacy v1 also appended the user agent. Reuse that session, as Key Model Access does for v1,
+  // without storing another copy.
   function storedValue(name) {
     try {
       let raw = localStorage.getItem(name);
       if (raw === null) return null;
-      if (raw.startsWith("enc::v1::")) {
+      const legacy = raw.startsWith("enc::v1::");
+      if (legacy || raw.startsWith("enc::v2::")) {
         const bytes = Uint8Array.from(atob(raw.slice(9)), (character) => character.charCodeAt(0));
-        const key = new TextEncoder().encode(`cli-proxy-api-webui::secure-storage|${location.host}|${navigator.userAgent}`);
+        const scope = `cli-proxy-api-webui::secure-storage|${location.host}`;
+        const key = new TextEncoder().encode(legacy ? `${scope}|${navigator.userAgent}` : scope);
         for (let index = 0; index < bytes.length; index++) bytes[index] ^= key[index % key.length];
         raw = new TextDecoder().decode(bytes);
       }
